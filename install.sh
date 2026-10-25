@@ -1,55 +1,98 @@
 #!/usr/bin/env bash
 # Install or remove the Saved Networks applet for Cinnamon.
-#   ./install.sh            copy the applet into place, swap out the stock network applet,
-#                           and install the login check
-#   ./install.sh --restore  put the stock network applet back and remove the login check
+#
+#   ./install.sh                 asks for an applet name, copies the applet into place, swaps it in
+#                                for the stock network applet, and adds a login check to autostart
+#   ./install.sh --id NAME       same, without asking (applet id becomes saved-networks@NAME)
+#   ./install.sh --no-autostart  skip the login check
+#   ./install.sh --restore       put the stock network applet back and remove the login check
+#
+# Test overrides: APPLETS_DIR, AUTOSTART_DIR, and --no-panel (leave the panel settings alone).
 set -euo pipefail
 
-UUID="saved-networks@local"
+PREFIX="saved-networks"
 STOCK="network@cinnamon.org"
+DEFAULT_NAME="local"
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DEST="$HOME/.local/share/cinnamon/applets/$UUID"
-AUTOSTART="$HOME/.config/autostart/saved-networks-check.desktop"
+APPLETS_DIR="${APPLETS_DIR:-$HOME/.local/share/cinnamon/applets}"
+AUTOSTART="${AUTOSTART_DIR:-$HOME/.config/autostart}/saved-networks-check.desktop"
+
+name="" restore=0 autostart=1 panel=1
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --id) name="${2:?--id needs a name}"; shift ;;
+        --restore) restore=1 ;;
+        --no-autostart) autostart=0 ;;
+        --no-panel) panel=0 ;;
+        -h|--help) sed -n '2,11p' "$0"; exit 0 ;;
+        *) echo "Unknown option: $1" >&2; exit 2 ;;
+    esac
+    shift
+done
 
 enabled() { gsettings get org.cinnamon enabled-applets; }
+installed_uuid() { enabled | grep -o "$PREFIX@[A-Za-z0-9._-]*" | head -1 || true; }
 
-swap() { # swap <from-uuid> <to-uuid>: rename the entry in place, keep its panel slot
+# swap FROM TO: rename the panel entry in place so the applet keeps its slot.
+swap() {
+    [[ $panel -eq 1 ]] || return 0
     local list
     list="$(enabled)"
-    if grep -q "$2" <<<"$list"; then
-        return 0
-    fi
-    if ! grep -q "$1" <<<"$list"; then
-        # not present at all: append to the right side of the first panel
-        list="${list%]*}, 'panel1:right:7:$2:99']"
-    else
+    grep -q "'[^']*:$2:[0-9]*'" <<<"$list" && return 0
+    if grep -q "$1" <<<"$list"; then
         list="$(sed -E "s/(panel[0-9]+:(left|right|center):[0-9]+:)$1(:[0-9]+)/\1$2\3/" <<<"$list")"
+    else
+        list="${list%]*}, 'panel1:right:7:$2:99']"
     fi
     gsettings set org.cinnamon enabled-applets "$list"
 }
 
-if [[ "${1:-}" == "--restore" ]]; then
-    swap "$UUID" "$STOCK"
+if [[ $restore -eq 1 ]]; then
+    from="$(installed_uuid)"
+    [[ -n "$from" ]] && swap "$from" "$STOCK"
     rm -f "$AUTOSTART"
     echo "Stock network applet restored."
     exit 0
 fi
 
-if [[ "$SRC" != "$DEST" ]]; then
-    mkdir -p "$DEST"
-    cp "$SRC"/metadata.json "$SRC"/applet.js "$SRC"/check.sh "$DEST"/
+# Running from inside the applets folder: the folder name already is the id.
+if [[ "$(dirname "$SRC")" == "$APPLETS_DIR" ]]; then
+    uuid="$(basename "$SRC")"
+    name="${uuid#"$PREFIX"@}"
+else
+    if [[ -z "$name" ]]; then
+        read -r -p "Applet name (becomes $PREFIX@NAME) [$DEFAULT_NAME]: " name
+        name="${name:-$DEFAULT_NAME}"
+    fi
+    if [[ ! "$name" =~ ^[A-Za-z0-9._-]+$ ]]; then
+        echo "Name may only contain letters, digits, '.', '_' and '-'." >&2
+        exit 2
+    fi
+    uuid="$PREFIX@$name"
 fi
-chmod +x "$DEST/check.sh"
+dest="$APPLETS_DIR/$uuid"
 
-mkdir -p "$(dirname "$AUTOSTART")"
-cat >"$AUTOSTART" <<EOF
+if [[ "$SRC" != "$dest" ]]; then
+    mkdir -p "$dest"
+    cp "$SRC"/applet.js "$SRC"/check.sh "$dest"/
+    sed -E "s/\"uuid\": *\"[^\"]*\"/\"uuid\": \"$uuid\"/" "$SRC/metadata.json" >"$dest/metadata.json"
+fi
+chmod +x "$dest/check.sh"
+
+if [[ $autostart -eq 1 ]]; then
+    mkdir -p "$(dirname "$AUTOSTART")"
+    cat >"$AUTOSTART" <<EOF
 [Desktop Entry]
 Type=Application
 Name=Saved Networks check
 Comment=Warn if the Saved Networks applet is no longer in the panel
-Exec=$DEST/check.sh
+Exec=$dest/check.sh
 X-GNOME-Autostart-Delay=20
 EOF
+fi
 
-swap "$STOCK" "$UUID"
-echo "Installed. Saved Networks is now the panel's network applet."
+from="$(installed_uuid)"
+swap "${from:-$STOCK}" "$uuid"
+echo "Installed $uuid in $dest"
+[[ $autostart -eq 1 ]] && echo "Login check added: $AUTOSTART"
+exit 0

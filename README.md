@@ -11,16 +11,21 @@ never scanned or shown, so a stray click can't put you on someone's open hotspot
 
 ## Install
 
+Clone the repo anywhere and run the installer:
+
 ```bash
-git clone <this repo> ~/.local/share/cinnamon/applets/saved-networks@local
-~/.local/share/cinnamon/applets/saved-networks@local/install.sh
+git clone <this repo> && cd cinnamon-saved-networks
+./install.sh
 ```
 
-`install.sh` swaps the stock `network@cinnamon.org` applet for this one (same panel slot) and adds
-a login check (`check.sh`) that shows a critical notification if the applet ever stops being
-enabled or its files disappear.
+It asks for an applet name (default `local`, so the applet id becomes `saved-networks@local`),
+copies the applet into `~/.local/share/cinnamon/applets/`, swaps it in for the stock
+`network@cinnamon.org` applet (same panel slot), and adds a login check to your autostart.
+The check shows a critical notification if the applet ever stops being enabled or its files
+disappear.
 
-Go back to the stock applet with `./install.sh --restore`.
+Options: `--id NAME` skips the question, `--no-autostart` skips the login check, and
+`--restore` puts the stock applet back and removes the login check.
 
 ## Notes
 
