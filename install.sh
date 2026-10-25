@@ -21,7 +21,11 @@ swap() { # swap <from-uuid> <to-uuid>: rename the entry in place, keep its panel
     fi
     if ! grep -q "$1" <<<"$list"; then
         # not present at all: append to the right side of the first panel
-        list="${list%]*}, 'panel1:right:7:$2:99']"
+        if [[ "$list" == *"[]" ]]; then
+            list="['panel1:right:7:$2:99']"   # gsettings prints an empty list as "@as []"
+        else
+            list="${list%]*}, 'panel1:right:7:$2:99']"
+        fi
     else
         list="$(sed -E "s/(panel[0-9]+:(left|right|center):[0-9]+:)$1(:[0-9]+)/\1$2\3/" <<<"$list")"
     fi

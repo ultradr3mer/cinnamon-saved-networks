@@ -3,16 +3,26 @@
 A network applet for Cinnamon that lists **only networks you have saved**. Nearby networks are
 never scanned or shown, so a stray click can't put you on someone's open hotspot.
 
+![Default menu with saved networks only, and the Discover warning view](docs/screenshot.png)
+
 - Saved Wi-Fi, Wired, VPN and everything else (VLAN, …) in one menu; click to connect or disconnect
 - Saved profiles without encryption are flagged `⚠ open` and ask for confirmation before connecting
 - **Discover unknown networks** switch: off by default, never remembered, warns when turned on,
   switches itself off after 5 minutes or after you connect
 - Enterprise (802.1X) and WEP networks are handed to Network Settings
 
+## Requirements
+
+- Cinnamon desktop
+- NetworkManager with `nmcli`
+- `zenity` (confirmation and password dialogs)
+- `notify-send` (login check, usually from `libnotify-bin`)
+
 ## Install
 
 ```bash
-git clone <this repo> ~/.local/share/cinnamon/applets/saved-networks@clara
+git clone https://github.com/ultradr3mer/cinnamon-saved-networks.git \
+    ~/.local/share/cinnamon/applets/saved-networks@clara
 ~/.local/share/cinnamon/applets/saved-networks@clara/install.sh
 ```
 
@@ -27,3 +37,7 @@ Go back to the stock applet with `./install.sh --restore`.
 - The stock applet is also Cinnamon's secret agent for password prompts. This applet asks for
   new Wi-Fi passwords itself; passwords of saved profiles are stored in the profile and keep working.
 - A new network's password is briefly visible in the process list while `nmcli` saves it.
+
+## License
+
+[MIT](LICENSE)
