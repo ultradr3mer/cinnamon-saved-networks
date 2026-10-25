@@ -59,6 +59,7 @@ fi
 if [[ "$(dirname "$SRC")" == "$APPLETS_DIR" ]]; then
     uuid="$(basename "$SRC")"
     name="${uuid#"$PREFIX"@}"
+    sed -E -i "s/\"uuid\": *\"[^\"]*\"/\"uuid\": \"$uuid\"/" "$SRC/metadata.json"
 else
     if [[ -z "$name" ]]; then
         read -r -p "Applet name (becomes $PREFIX@NAME) [$DEFAULT_NAME]: " name
