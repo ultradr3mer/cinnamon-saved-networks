@@ -1,0 +1,7 @@
+{
+ "uuid": "saved-networks@clara",
+ "name": "Saved Networks",
+ "description": "Network applet that lists only networks you have saved. Nearby networks are never shown.",
+ "icon": "network-wireless",
+ "max-instances": 1
+}
